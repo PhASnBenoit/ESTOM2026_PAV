@@ -1,10 +1,13 @@
 /////////////////////////////////////////////////
 //
-//  PROGRAMME PAV  MàJ du 06/04/2026 by PhA
+//  PROGRAMME PAV  MàJ du 09/04/2026 by PhA
 //  v2.0  La lecture de la tension batterie n'est pas opérationnelle
 //  v2.1  Modif luminosité 0-2 devient 1-3   1 faible, 2 moyen, 3 fort
+//  v2.2  Version Béta (Sans la détection batterie faible)
+//  v2.3  GPIO6 désactivé, conversion affinée, g_etatPAV, VER 
 // 
 /////////////////////////////////////////////////
+#define VER "2.3"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -22,18 +25,18 @@
 //
 // A mettre à jour selon le contexte d'utilisation
 //
-const char *tcpAddress = "192.168.0.10";
-const char *ssid = "AP-ESTOM";
-const char *password = "ESTOM2025";
-//const char *tcpAddress = "192.168.4.62";
-//const char *ssid = "STS_C12";
-//const char *password = "PervasioN";
-const uint16_t tcpPort = 5005;
+const char *g_tcpAddress = "192.168.0.10";
+const char *g_ssid = "AP-ESTOM";
+const char *g_password = "ESTOM2025";
+//const char *g_tcpAddress = "192.168.4.81";
+//const char *g_ssid = "STS_C12";
+//const char *g_password = "PervasioN";
+const uint16_t g_tcpPort = 5005;
 //
 // FIN METTRE A JOUR
 //
 
-T_ETATSPAV etatsPAV=VIDE; // par défaut au démarrage état du PAV
+T_ETATSPAV g_etatPAV=VIDE; // par défaut au démarrage état du PAV
 //
 // instanciations
 //
@@ -44,12 +47,12 @@ IPAddress adrIpLocale;
 //
 // etats et valeurs de l'application
 //
-byte lastOctet = 1; // par défaut
-// TODO prévoir si batterie faible alors luminosite revient à faible : 0
-uint8_t luminosite=0; // par défaut faible  1 moyen  2 fort
-uint8_t dsCouleur=1;  // no des switch sw2 et 3, donc entre 0-3
-int type=0;  // type de device : PAV ou abri bus (sw1 = 1)
-int c=0; // pour le clignotement de la couleur
+byte g_lastOctet = 1; // par défaut, contient derniere octet de l'adr IP
+// TODO prévoir si batterie faible alors g_luminosite revient à faible : 0
+uint8_t g_luminosite=0; // par défaut faible  1 moyen  2 fort
+uint8_t g_dsCouleur=1;  // no des switch sw2 et 3, donc entre 0-3
+int g_type=0;  // g_type de device : PAV ou abri bus (sw1 = 1)
+int g_c=0; // pour le clignotement de la couleur
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* IR
@@ -89,7 +92,7 @@ union WordUnion{
 ////////////////////////////////////////////////////////////////////////////
 void connectToWiFi() {
   Serial.print("Connexion au WiFi");
-  WiFi.begin(ssid, password);
+  WiFi.begin(g_ssid, g_password);
   unsigned long startAttemptTime = millis();
   while ( (WiFi.status()!=WL_CONNECTED) && ( (millis()-startAttemptTime)<10000) ) {
     delay(500);
@@ -100,9 +103,9 @@ void connectToWiFi() {
     Serial.print("Adresse IP locale : ");
     Serial.println(WiFi.localIP());
     adrIpLocale = WiFi.localIP();
-    lastOctet = adrIpLocale[3];  // dernier octet
+    g_lastOctet = adrIpLocale[3];  // dernier octet
     Serial.print("\ndernier octet :");
-    Serial.println(adrIpLocale[3]);
+    Serial.println(g_lastOctet);
   } else {
     Serial.println("\nÉchec de connexion WiFi. RESTART !");
     ESP.restart();  // redémarrage logiciel
@@ -111,7 +114,7 @@ void connectToWiFi() {
 ///////////////////////////////////////////////////////////////////////////////
 bool connectToServer() {
   Serial.println("Connexion au serveur TCP...");
-  if (clientTcp.connect(tcpAddress, tcpPort)) {
+  if (clientTcp.connect(g_tcpAddress, g_tcpPort)) {
     Serial.println("Connexion TCP réussie.");
     return true;
   } else {
@@ -123,7 +126,7 @@ bool connectToServer() {
 void sendTCPMessageToServer(T_TYPETRAME trame) {
   if (!clientTcp.connected()) {
     Serial.println("Connexion perdue pour envoi, tentative de reconnexion...");
-    if (!clientTcp.connect(tcpAddress, tcpPort)) {
+    if (!clientTcp.connect(g_tcpAddress, g_tcpPort)) {
       Serial.println("Échec de reconnexion pour envoi.");
       return;
     } // if
@@ -133,10 +136,10 @@ void sendTCPMessageToServer(T_TYPETRAME trame) {
     case BONJOUR: 
       doc["status"] = "0";
       doc["type"] = "PAV";
-      doc["couleur"] = String(dsCouleur);
+      doc["couleur"] = String(g_dsCouleur);
     break;
     default:  // A effacer dans le futur pour les tests seulement
-      doc["status"] = 99;
+      doc["erreur"] = "Type de trame inconnue";
     break;
   } // sw
   serializeJson(doc, clientTcp);  // envoi json vers le serveur
@@ -150,6 +153,8 @@ void sendTCPMessageToServer(T_TYPETRAME trame) {
 /////////////////////////////////////////////////////////////////////////////////////////
 void setup() {
   Serial.begin(115200); // init terminal de communication
+  Serial.print("estomPAV v");
+  Serial.println(VER);
   // connexion WIFI
   connectToWiFi(); // reset si problème connexion
   // connexion au serveur TCP
@@ -159,6 +164,15 @@ void setup() {
       ESP.restart();
     } // if
   } // wh
+
+  // lecture des sw au démarrage seulement
+  ds.setup();  // DIP SW
+  g_dsCouleur = ds.getDsCouleur();
+  g_type = ds.getType();   // 1 abri bus   0 PAV avec couleur issue de SW1 et SW2
+  Serial.print("Couleur=");
+  Serial.println(g_dsCouleur);
+  Serial.print("Type=");
+  Serial.println(g_type);
 
   // Just to know which program is running on my Arduino
   Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRMP));
@@ -180,7 +194,7 @@ void setup() {
      */
     irsnd_data.protocol = IRMP_NEC_PROTOCOL;
     irsnd_data.address = 0x25DA; // Addresse avec octet et octet complémenté 
-    irsnd_data.command = 0x01; // The required inverse of the 8 bit command is added by the send routine.
+    irsnd_data.command = (g_lastOctet<<3)|(g_dsCouleur<<1)|g_type; // The required inverse of the 8 bit command is added by the send routine.
     irsnd_data.flags = 1; // repeat frame
 #endif
 
@@ -190,24 +204,17 @@ void setup() {
   }
   irsnd_data_print(&Serial, &irsnd_data);
   
-  // lecture des sw au démarrage seulement
-  ds.setup();  // DIP SW
-  dsCouleur = ds.getDsCouleur();
-  type = ds.getType();   // 1 abri bus   0 PAV avec couleur issue de SW1 et SW2
-  Serial.print("Couleur=");
-  Serial.println(dsCouleur);
-  Serial.print("Type=");
-  Serial.println(type);
-
   // init couleur et afficheur LED
   afficheur.begin(); // require to intialize object
-  afficheur.on(dsCouleur, luminosite);
-  delay(400);
+  afficheur.on(g_dsCouleur, g_luminosite);
+  delay(500);
   afficheur.off();
 
   // témoin d'émission IR
   pinMode(21,OUTPUT); // Pilotage USER_LED jaune
   digitalWrite(21, HIGH);
+  //pinMode(6, OUTPUT);
+  //digitalWrite(6, LOW);
 
   sendTCPMessageToServer(BONJOUR);  // Envoi initial après connexion
   delay(500); // attente réponse du serveur
@@ -238,58 +245,57 @@ void loop() {
       return;
     } // if
 
-    int ordre = data["ordre"];
+    int ordre = data["ordre"].as<String>().toInt();
     Serial.print("Ordre reçu : ");
     Serial.println(ordre);
     switch (ordre) {
       case 1: // début partie
       case 13: // trame annulation transfert
-        etatsPAV = PLEIN; break;
-        etatsPAV = PLEIN; break;
+        g_etatPAV = PLEIN; break;
       case 11: // trame départ transfert
-        etatsPAV = VIDAGE; break;
+        g_etatPAV = VIDAGE; break;
       case 0: // trame init
+          g_luminosite = data["luminosite"].as<String>().toInt();
+          g_etatPAV = (T_ETATSPAV)data["etat"].as<String>().toInt(); 
+        break;
       case 2: // trame fin partie
       case 12: // trame fin transfert
-        if (data.containsKey("luminosite")) 
-          luminosite = data["luminosite"];
-        etatsPAV = VIDE; break;
+        g_etatPAV = VIDE; break;
       default:
         Serial.println("Ordre inconnu."); break;
     } // sw
     Serial.print("EtatPAV=");
-    Serial.println(etatsPAV);
+    Serial.println(g_etatPAV);
   } // if available
 
   // TODO Lire Batterie faible
-  // TODO Si batterie faible alors luminosite=0
+  // TODO Si batterie faible alors g_luminosite=0
 
   // contrôle de l'afficheur LED
-  switch(etatsPAV) {
+  switch(g_etatPAV) {
     case VIDE: 
       afficheur.off(); 
       break;
     case PLEIN: 
-      afficheur.on(dsCouleur, luminosite);
+      afficheur.on(g_dsCouleur, g_luminosite);
       break;
     case VIDAGE: 
-      if (c==0) c=20; else c=0; 
-      afficheur.clignote(dsCouleur, luminosite, c);
+      if (g_c==0) g_c=20; else g_c=0; 
+      afficheur.clignote(g_dsCouleur, g_luminosite, g_c);
       break;
     default: Serial.println("état inconnu."); break;
   } // sw
 
   // contrôle de l'IR avec émission data
-  switch(etatsPAV) {
+  switch(g_etatPAV) {
       case PLEIN:
       case VIDAGE:
         digitalWrite(21, LOW);
         // Utilisation de la bibliothèque IRMP
-        irsnd_data.command=(lastOctet<<3)|(dsCouleur<<1)|type;
-// ou       irsnd_data.command=((dsCouleur<<1)|type);
+        irsnd_data.command=(g_lastOctet<<3)|(g_dsCouleur<<1)|g_type;
         irsnd_send_data(&irsnd_data, true);
         irsnd_data_print(&Serial, &irsnd_data);
-        //delay(100);
+        delay(80);
         digitalWrite(21, HIGH);
         break;
   } // sw
