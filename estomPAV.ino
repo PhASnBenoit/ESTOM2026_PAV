@@ -5,9 +5,10 @@
 //  v2.1  Modif luminosité 0-2 devient 1-3   1 faible, 2 moyen, 3 fort
 //  v2.2  Version Béta (Sans la détection batterie faible)
 //  v2.3  GPIO6 désactivé, conversion affinée, g_etatPAV, VER 
+//  v2.4  Corrections mineures
 // 
 /////////////////////////////////////////////////
-#define VER "2.3"
+#define VER "2.4"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -249,15 +250,15 @@ void loop() {
     Serial.print("Ordre reçu : ");
     Serial.println(ordre);
     switch (ordre) {
+      case 0: // trame init
+          g_luminosite = data["luminosite"].as<String>().toInt();
+          g_etatPAV = (T_ETATSPAV)data["etat"].as<String>().toInt(); 
+        break;
       case 1: // début partie
       case 13: // trame annulation transfert
         g_etatPAV = PLEIN; break;
       case 11: // trame départ transfert
         g_etatPAV = VIDAGE; break;
-      case 0: // trame init
-          g_luminosite = data["luminosite"].as<String>().toInt();
-          g_etatPAV = (T_ETATSPAV)data["etat"].as<String>().toInt(); 
-        break;
       case 2: // trame fin partie
       case 12: // trame fin transfert
         g_etatPAV = VIDE; break;
