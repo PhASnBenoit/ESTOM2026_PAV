@@ -6,9 +6,10 @@
 //  v2.2  Version Béta (Sans la détection batterie faible)
 //  v2.3  GPIO6 désactivé, conversion affinée, g_etatPAV, VER 
 //  v2.4  Corrections mineures
+//  v2.5  Echange etat VIDE et PLEIN et ajout gestion batterie
 // 
 /////////////////////////////////////////////////
-#define VER "2.4"
+#define VER "2.5"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -18,6 +19,7 @@
 #include "definitions.h"
 #include "cdipswitch.h"
 #include "cneopixel.h"
+#include "cbatterie.h"
 
 /////////////////////////////////////////
 // VARIABLES ET INSTANCIATION GLOBALES
@@ -41,6 +43,7 @@ T_ETATSPAV g_etatPAV=VIDE; // par défaut au démarrage état du PAV
 //
 // instanciations
 //
+CBatterie batt;
 CDipSwitch ds;
 CNeoPixel afficheur(NUM_LEDS, LED_PIN, DELAYVAL);
 WiFiClient clientTcp;
@@ -50,10 +53,11 @@ IPAddress adrIpLocale;
 //
 byte g_lastOctet = 1; // par défaut, contient derniere octet de l'adr IP
 // TODO prévoir si batterie faible alors g_luminosite revient à faible : 0
-uint8_t g_luminosite=0; // par défaut faible  1 moyen  2 fort
+uint8_t g_luminosite=1; // par défaut faible=1 moyen=2 fort=3
 uint8_t g_dsCouleur=1;  // no des switch sw2 et 3, donc entre 0-3
 int g_type=0;  // g_type de device : PAV ou abri bus (sw1 = 1)
 int g_c=0; // pour le clignotement de la couleur
+bool g_batterie_faible = false;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* IR
@@ -156,15 +160,10 @@ void setup() {
   Serial.begin(115200); // init terminal de communication
   Serial.print("estomPAV v");
   Serial.println(VER);
-  // connexion WIFI
-  connectToWiFi(); // reset si problème connexion
-  // connexion au serveur TCP
-  while (!connectToServer()) {
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("\nÉchec de connexion WiFi. RESTART !");
-      ESP.restart();
-    } // if
-  } // wh
+
+    // test niveau batterie
+  float nivBatt = batt.getValue();
+  g_batterie_faible = (nivBatt<=SEUIL_BATTERIE_FAIBLE?true:false);
 
   // lecture des sw au démarrage seulement
   ds.setup();  // DIP SW
@@ -207,15 +206,26 @@ void setup() {
   
   // init couleur et afficheur LED
   afficheur.begin(); // require to intialize object
-  afficheur.on(g_dsCouleur, g_luminosite);
-  delay(500);
-  afficheur.off();
+  for(int i=0 ; i<5 ; i++) {
+    afficheur.on(g_dsCouleur, g_luminosite, g_batterie_faible);
+    delay(500);
+    afficheur.off();
+  } // for
 
   // témoin d'émission IR
   pinMode(21,OUTPUT); // Pilotage USER_LED jaune
   digitalWrite(21, HIGH);
-  //pinMode(6, OUTPUT);
-  //digitalWrite(6, LOW);
+
+  // connexion WIFI
+  connectToWiFi(); // reset si problème connexion
+  // connexion au serveur TCP
+  while (!connectToServer()) {
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("\nÉchec de connexion WiFi. RESTART !");
+      ESP.restart();
+    } // if
+    delay(1000);
+  } // wh
 
   sendTCPMessageToServer(BONJOUR);  // Envoi initial après connexion
   delay(500); // attente réponse du serveur
@@ -252,7 +262,7 @@ void loop() {
     switch (ordre) {
       case 0: // trame init
           g_luminosite = data["luminosite"].as<String>().toInt();
-          g_etatPAV = (T_ETATSPAV)data["etat"].as<String>().toInt(); 
+          g_etatPAV = (T_ETATSPAV)data["etat"].as<String>().toInt();
         break;
       case 1: // début partie
       case 13: // trame annulation transfert
@@ -269,20 +279,23 @@ void loop() {
     Serial.println(g_etatPAV);
   } // if available
 
-  // TODO Lire Batterie faible
-  // TODO Si batterie faible alors g_luminosite=0
+  // test niveau batterie
+  float nivBatt = batt.getValue();
+  g_batterie_faible = (nivBatt<=SEUIL_BATTERIE_FAIBLE?true:false);
+  if (g_batterie_faible == true)
+    g_luminosite = 1; // minimum
 
   // contrôle de l'afficheur LED
   switch(g_etatPAV) {
     case VIDE: 
-      afficheur.off(); 
+      afficheur.off();
       break;
     case PLEIN: 
-      afficheur.on(g_dsCouleur, g_luminosite);
+      afficheur.on(g_dsCouleur, g_luminosite, g_batterie_faible);
       break;
     case VIDAGE: 
       if (g_c==0) g_c=20; else g_c=0; 
-      afficheur.clignote(g_dsCouleur, g_luminosite, g_c);
+      afficheur.clignote(g_dsCouleur, g_luminosite, g_c, g_batterie_faible);
       break;
     default: Serial.println("état inconnu."); break;
   } // sw

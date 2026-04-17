@@ -11,6 +11,7 @@
 //
 // A AJUSTER EN FAISANT DES ESSAIS
 //
+const uint8_t orange[3] = {20, 10, 0};
 const uint8_t couleurs[4][3] = {
   {10, 10, 0},   // jaune RAL1018
   {0, 20, 10},   // vert RAL6032
@@ -31,7 +32,7 @@ class CNeoPixel {
     int _delayVal;
 
     void clear();
-    void setAll(uint8_t r, uint8_t g, uint8_t b);
+    void setAll(uint8_t r, uint8_t g, uint8_t b, bool bf);
     //void chenillard(uint8_t r, uint8_t g, uint8_t b); 
 
   public:
@@ -39,9 +40,9 @@ class CNeoPixel {
     CNeoPixel(int num_leds, int pin, int delay_val);
 
     void begin();
-    void on(uint8_t coul, uint8_t lum);
+    void on(uint8_t coul, uint8_t lum, bool bf);
     void off();
-    void clignote(uint8_t coul, uint8_t lum, uint8_t c);
+    void clignote(uint8_t coul, uint8_t lum, uint8_t c, bool bf);
 };
 
 #endif

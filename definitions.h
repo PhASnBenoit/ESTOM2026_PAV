@@ -1,11 +1,13 @@
 #ifndef __DEFINITIONS_H
 #define __DEFINITIONS_H
 
+#define SEUIL_BATTERIE_FAIBLE 6.8   // tension seuil batterie faible (V)
+
 //////////////////////////////////////////
 // DEFINITIONS
 //////////////////////////////////////////
 typedef enum e_etatsPAV {
-  VIDE, PLEIN, VIDAGE
+  PLEIN, VIDE, VIDAGE
 } T_ETATSPAV;
 
 typedef enum e_typeTrame {  // Types de réception de trame du superviseur

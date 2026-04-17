@@ -21,10 +21,13 @@ void CNeoPixel::clear() {
 }
 
 // Allumer toutes les LEDs avec une couleur
-void CNeoPixel::setAll(uint8_t r, uint8_t g, uint8_t b) {
+void CNeoPixel::setAll(uint8_t r, uint8_t g, uint8_t b, bool bf) {
   // TODO BATTERIE FAIBLE
   for (int i = 0; i < _numLeds; i++) {
-    _pixels.setPixelColor(i, _pixels.Color(r, g, b));
+    if (bf == true)
+      _pixels.setPixelColor(i, _pixels.Color(r, g, b));
+    else
+      _pixels.setPixelColor(i, _pixels.Color(orange[0], orange[1], orange[2]));
   } // for
   _pixels.show();
 }
@@ -44,17 +47,17 @@ void CNeoPixel::off() {
   clear();
 }
 
-void CNeoPixel::on(uint8_t coul, uint8_t lum) {
+void CNeoPixel::on(uint8_t coul, uint8_t lum, bool bf) {
   if (lum > 3) lum = 3;
   if (lum < 1) lum = 1;
-  setAll((couleurs[coul][0]*lum)%256, (couleurs[coul][1]*lum)%256, (couleurs[coul][2]*lum)%256);
+  setAll((couleurs[coul][0]*lum)%256, (couleurs[coul][1]*lum)%256, (couleurs[coul][2]*lum)%256, bf);
 }
 
-void CNeoPixel::clignote(uint8_t coul, uint8_t lum, uint8_t c) {
+void CNeoPixel::clignote(uint8_t coul, uint8_t lum, uint8_t c, bool bf) {
   if (lum > 3) lum = 3;
   if (lum < 1) lum = 1;
   if (c)
-    setAll((couleurs[coul][0]*lum)%256, (couleurs[coul][1]*lum)%256, (couleurs[coul][2]*lum)%256);
+    setAll((couleurs[coul][0]*lum)%256, (couleurs[coul][1]*lum)%256, (couleurs[coul][2]*lum)%256, bf);
   else
     clear();
 }
