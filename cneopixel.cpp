@@ -53,7 +53,9 @@ void CNeoPixel::on(uint8_t coul, uint8_t lum, bool bf) {
   setAll((couleurs[coul][0]*lum)%256, (couleurs[coul][1]*lum)%256, (couleurs[coul][2]*lum)%256, bf);
 }
 
-void CNeoPixel::clignote(uint8_t coul, uint8_t lum, uint8_t c, bool bf) {
+void CNeoPixel::clignote(uint8_t coul, uint8_t lum, bool bf) {
+  static uint8_t c = 1;
+  if (c==0) c=1; else c=0;
   if (lum > 3) lum = 3;
   if (lum < 1) lum = 1;
   if (c)

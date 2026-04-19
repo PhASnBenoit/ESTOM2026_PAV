@@ -7,9 +7,11 @@
 //  v2.3  GPIO6 désactivé, conversion affinée, g_etatPAV, VER 
 //  v2.4  Corrections mineures
 //  v2.5  Echange etat VIDE et PLEIN et ajout gestion batterie
+//  v2.6  Changement password WIFI ESTOM2026
+//  v2.7  18/04/2026 transmission des états du PAV
 // 
 /////////////////////////////////////////////////
-#define VER "2.5"
+#define VER "2.7"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -28,12 +30,9 @@
 //
 // A mettre à jour selon le contexte d'utilisation
 //
-const char *g_tcpAddress = "192.168.0.10";
+const char *g_tcpAddress = "192.168.0.1";
 const char *g_ssid = "AP-ESTOM";
-const char *g_password = "ESTOM2025";
-//const char *g_tcpAddress = "192.168.4.81";
-//const char *g_ssid = "STS_C12";
-//const char *g_password = "PervasioN";
+const char *g_password = "ESTOM2026";
 const uint16_t g_tcpPort = 5005;
 //
 // FIN METTRE A JOUR
@@ -143,6 +142,15 @@ void sendTCPMessageToServer(T_TYPETRAME trame) {
       doc["type"] = "PAV";
       doc["couleur"] = String(g_dsCouleur);
     break;
+    case TT_VIDE:
+      doc["status"] = "20";
+    break;
+    case TT_PLEIN:
+      doc["status"] = "21";
+    break;
+    case TT_VIDAGE:
+      doc["status"] = "22";      
+    break;
     default:  // A effacer dans le futur pour les tests seulement
       doc["erreur"] = "Type de trame inconnue";
     break;
@@ -208,8 +216,9 @@ void setup() {
   afficheur.begin(); // require to intialize object
   for(int i=0 ; i<5 ; i++) {
     afficheur.on(g_dsCouleur, g_luminosite, g_batterie_faible);
-    delay(500);
+    delay(250);
     afficheur.off();
+    delay(250);
   } // for
 
   // témoin d'émission IR
@@ -220,12 +229,14 @@ void setup() {
   connectToWiFi(); // reset si problème connexion
   // connexion au serveur TCP
   while (!connectToServer()) {
+    afficheur.clignote(g_dsCouleur, g_luminosite, g_batterie_faible);
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("\nÉchec de connexion WiFi. RESTART !");
       ESP.restart();
     } // if
-    delay(1000);
+    delay(2000);
   } // wh
+  afficheur.off();
 
   sendTCPMessageToServer(BONJOUR);  // Envoi initial après connexion
   delay(500); // attente réponse du serveur
@@ -257,21 +268,34 @@ void loop() {
     } // if
 
     int ordre = data["ordre"].as<String>().toInt();
+    int etatJeu;
+    int etatPAV;
     Serial.print("Ordre reçu : ");
     Serial.println(ordre);
     switch (ordre) {
       case 0: // trame init
           g_luminosite = data["luminosite"].as<String>().toInt();
-          g_etatPAV = (T_ETATSPAV)data["etat"].as<String>().toInt();
+          etatPAV = (T_ETATSPAV)data["etatPAV"].as<String>().toInt();
+          etatJeu = data["etatJeu"].as<String>().toInt();
+          g_etatPAV = VIDE; // par défaut
+          if ( (etatJeu==ENCOURS) && (etatPAV==PLEIN) ) g_etatPAV = PLEIN;
+          if ( (etatJeu==ENCOURS) && (etatPAV==VIDAGE) ) g_etatPAV = VIDAGE;
+        sendTCPMessageToServer((T_TYPETRAME)g_etatPAV);  
         break;
       case 1: // début partie
       case 13: // trame annulation transfert
-        g_etatPAV = PLEIN; break;
+        g_etatPAV = PLEIN; 
+        sendTCPMessageToServer(TT_PLEIN);  
+      break;
       case 11: // trame départ transfert
-        g_etatPAV = VIDAGE; break;
+        g_etatPAV = VIDAGE; 
+        sendTCPMessageToServer(TT_VIDAGE);  
+      break;
       case 2: // trame fin partie
       case 12: // trame fin transfert
-        g_etatPAV = VIDE; break;
+        g_etatPAV = VIDE; 
+        sendTCPMessageToServer(TT_VIDE);  
+      break;
       default:
         Serial.println("Ordre inconnu."); break;
     } // sw
@@ -295,7 +319,7 @@ void loop() {
       break;
     case VIDAGE: 
       if (g_c==0) g_c=20; else g_c=0; 
-      afficheur.clignote(g_dsCouleur, g_luminosite, g_c, g_batterie_faible);
+      afficheur.clignote(g_dsCouleur, g_luminosite, g_batterie_faible);
       break;
     default: Serial.println("état inconnu."); break;
   } // sw
@@ -308,7 +332,7 @@ void loop() {
         // Utilisation de la bibliothèque IRMP
         irsnd_data.command=(g_lastOctet<<3)|(g_dsCouleur<<1)|g_type;
         irsnd_send_data(&irsnd_data, true);
-        irsnd_data_print(&Serial, &irsnd_data);
+        //irsnd_data_print(&Serial, &irsnd_data);
         delay(80);
         digitalWrite(21, HIGH);
         break;

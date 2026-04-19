@@ -42,7 +42,7 @@ class CNeoPixel {
     void begin();
     void on(uint8_t coul, uint8_t lum, bool bf);
     void off();
-    void clignote(uint8_t coul, uint8_t lum, uint8_t c, bool bf);
+    void clignote(uint8_t coul, uint8_t lum, bool bf);
 };
 
 #endif
