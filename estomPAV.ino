@@ -9,9 +9,10 @@
 //  v2.5  Echange etat VIDE et PLEIN et ajout gestion batterie
 //  v2.6  Changement password WIFI ESTOM2026
 //  v2.7  18/04/2026 transmission des états du PAV
+//  v2.8  29/04/2026 Ajustement batterie faible et distinction PAV/ABB
 // 
 /////////////////////////////////////////////////
-#define VER "2.7"
+#define VER "2.8"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -139,7 +140,7 @@ void sendTCPMessageToServer(T_TYPETRAME trame) {
   switch(trame) {
     case BONJOUR: 
       doc["status"] = "0";
-      doc["type"] = "PAV";
+      doc["type"] = (g_type==0?"PAV":"ABB");
       doc["couleur"] = String(g_dsCouleur);
     break;
     case TT_VIDE:
@@ -274,7 +275,6 @@ void loop() {
     Serial.println(ordre);
     switch (ordre) {
       case 0: // trame init
-          g_luminosite = data["luminosite"].as<String>().toInt();
           etatPAV = (T_ETATSPAV)data["etatPAV"].as<String>().toInt();
           etatJeu = data["etatJeu"].as<String>().toInt();
           g_etatPAV = VIDE; // par défaut
@@ -283,6 +283,7 @@ void loop() {
         sendTCPMessageToServer((T_TYPETRAME)g_etatPAV);  
         break;
       case 1: // début partie
+        g_luminosite = data["luminosite"].as<String>().toInt();
       case 13: // trame annulation transfert
         g_etatPAV = PLEIN; 
         sendTCPMessageToServer(TT_PLEIN);  

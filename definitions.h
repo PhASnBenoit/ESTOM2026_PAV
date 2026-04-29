@@ -1,7 +1,7 @@
 #ifndef __DEFINITIONS_H
 #define __DEFINITIONS_H
 
-#define SEUIL_BATTERIE_FAIBLE 10.0   // tension seuil batterie faible (V)
+#define SEUIL_BATTERIE_FAIBLE 11.2
 
 //////////////////////////////////////////
 // DEFINITIONS
