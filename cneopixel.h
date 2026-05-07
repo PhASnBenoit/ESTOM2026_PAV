@@ -13,10 +13,10 @@
 //
 const uint8_t orange[3] = {20, 10, 0};
 const uint8_t couleurs[4][3] = {
-  {10, 10, 0},   // jaune RAL1018
-  {0, 20, 10},   // vert RAL6032
-  {0, 10, 20},   // Bleu RAL5015
-  {20, 20, 20}   // Gris RAL7011
+  {9, 5, 0},   // jaune RAL1018
+  {0, 10, 1},   // vert RAL6032
+  {0, 1, 10},   // Bleu RAL5015
+  {1, 1, 1}   // Gris RAL7011
 };  
 
 // RGB théoriques
@@ -30,6 +30,7 @@ class CNeoPixel {
     Adafruit_NeoPixel _pixels;
     int _numLeds;
     int _delayVal;
+    int _t;  // pour calculer 1s pour décroitre l'affichage
 
     void clear();
     void setAll(uint8_t r, uint8_t g, uint8_t b, bool bf);
@@ -42,6 +43,7 @@ class CNeoPixel {
     void begin();
     void on(uint8_t coul, uint8_t lum, bool bf);
     void off();
+    void vider(uint8_t coul, uint8_t lum, bool bf);
     void clignote(uint8_t coul, uint8_t lum, bool bf);
 };
 

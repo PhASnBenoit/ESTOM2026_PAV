@@ -10,9 +10,10 @@
 //  v2.6  Changement password WIFI ESTOM2026
 //  v2.7  18/04/2026 transmission des états du PAV
 //  v2.8  29/04/2026 Ajustement batterie faible et distinction PAV/ABB
+//  v2.9  05/05/2026 Corr bug couleur dip sw et vidage PAV
 // 
 /////////////////////////////////////////////////
-#define VER "2.8"
+#define VER "2.9"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -56,7 +57,6 @@ byte g_lastOctet = 1; // par défaut, contient derniere octet de l'adr IP
 uint8_t g_luminosite=1; // par défaut faible=1 moyen=2 fort=3
 uint8_t g_dsCouleur=1;  // no des switch sw2 et 3, donc entre 0-3
 int g_type=0;  // g_type de device : PAV ou abri bus (sw1 = 1)
-int g_c=0; // pour le clignotement de la couleur
 bool g_batterie_faible = false;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +173,9 @@ void setup() {
     // test niveau batterie
   float nivBatt = batt.getValue();
   g_batterie_faible = (nivBatt<=SEUIL_BATTERIE_FAIBLE?true:false);
-
+  Serial.print("Niveau batterie=");
+  Serial.printf("%f\n",nivBatt);
+  
   // lecture des sw au démarrage seulement
   ds.setup();  // DIP SW
   g_dsCouleur = ds.getDsCouleur();
@@ -307,6 +309,9 @@ void loop() {
   // test niveau batterie
   float nivBatt = batt.getValue();
   g_batterie_faible = (nivBatt<=SEUIL_BATTERIE_FAIBLE?true:false);
+  //Serial.print("Niveau batterie=");
+  //Serial.printf("%f\n",nivBatt);
+  
   if (g_batterie_faible == true)
     g_luminosite = 1; // minimum
 
@@ -318,9 +323,8 @@ void loop() {
     case PLEIN: 
       afficheur.on(g_dsCouleur, g_luminosite, g_batterie_faible);
       break;
-    case VIDAGE: 
-      if (g_c==0) g_c=20; else g_c=0; 
-      afficheur.clignote(g_dsCouleur, g_luminosite, g_batterie_faible);
+    case VIDAGE:
+      afficheur.vider(g_dsCouleur, g_luminosite, g_batterie_faible);
       break;
     default: Serial.println("état inconnu."); break;
   } // sw

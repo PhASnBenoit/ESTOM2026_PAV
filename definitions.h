@@ -1,7 +1,7 @@
 #ifndef __DEFINITIONS_H
 #define __DEFINITIONS_H
 
-#define SEUIL_BATTERIE_FAIBLE 11.2
+#define SEUIL_BATTERIE_FAIBLE 11000  // mv
 
 //////////////////////////////////////////
 // DEFINITIONS
