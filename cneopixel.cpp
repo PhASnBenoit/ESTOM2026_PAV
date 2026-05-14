@@ -54,14 +54,15 @@ void CNeoPixel::on(uint8_t coul, uint8_t lum, bool bf) {
 
 void CNeoPixel::vider(uint8_t coul, uint8_t lum, bool bf) {
   static int nbL = _numLeds;
+
   int i,j;
   if (lum > 3) lum = 3;
   if (lum < 1) lum = 1;
 
-  if ((millis() - _t) > 1000) {
+  if ((millis() - _t) > 1200) {
     _t = millis();
-    nbL -=4;
-    if (nbL<0) nbL=0;
+    nbL -= 4;
+    if (nbL<0) nbL=_numLeds;
   } // if
 
   for (i = 0; i < (_numLeds-nbL); i++) {

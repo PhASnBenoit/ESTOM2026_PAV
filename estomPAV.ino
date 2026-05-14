@@ -11,9 +11,10 @@
 //  v2.7  18/04/2026 transmission des états du PAV
 //  v2.8  29/04/2026 Ajustement batterie faible et distinction PAV/ABB
 //  v2.9  05/05/2026 Corr bug couleur dip sw et vidage PAV
+//  v3.0  13/05/2026 Corr bug méthode CNeoPixel::vider()
 // 
 /////////////////////////////////////////////////
-#define VER "2.9"
+#define VER "3.0"
 
 #include <Arduino.h>
 #include <WiFi.h>
