@@ -11,7 +11,7 @@
 //
 // A AJUSTER EN FAISANT DES ESSAIS
 //
-const uint8_t orange[3] = {20, 10, 0};
+const uint8_t orange[3] = {10, 0, 0};
 const uint8_t couleurs[4][3] = {
   {9, 5, 0},   // jaune RAL1018
   {0, 10, 1},   // vert RAL6032

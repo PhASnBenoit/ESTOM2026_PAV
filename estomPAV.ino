@@ -12,9 +12,10 @@
 //  v2.8  29/04/2026 Ajustement batterie faible et distinction PAV/ABB
 //  v2.9  05/05/2026 Corr bug couleur dip sw et vidage PAV
 //  v3.0  13/05/2026 Corr bug méthode CNeoPixel::vider()
+//  18/05/26 v3.1 Corr orange vers rouge pour batterie faible
 // 
 /////////////////////////////////////////////////
-#define VER "3.0"
+#define VER "3.1"
 
 #include <Arduino.h>
 #include <WiFi.h>
